@@ -3,7 +3,7 @@ TERMUX_PKG_DESCRIPTION="Build cross-platform desktop apps with JavaScript, HTML,
 TERMUX_PKG_LICENSE="MIT, BSD 3-Clause"
 TERMUX_PKG_MAINTAINER="Chongyun Lee <uchkks@protonmail.com>"
 _CHROMIUM_VERSION=114.0.5735.289
-TERMUX_PKG_VERSION=25.8.4
+TERMUX_PKG_VERSION=25.9.2
 TERMUX_PKG_SRCURL=git+https://github.com/electron/electron
 TERMUX_PKG_DEPENDS="electron-deps"
 TERMUX_PKG_BUILD_DEPENDS="libnotify, libffi-static"
@@ -44,7 +44,7 @@ termux_step_get_source() {
 	export PATH="$TERMUX_PKG_CACHEDIR/depot_tools:$PATH"
 
 	# Fetch chromium source
-	local __cr_src_dir="$HOME/chromium"
+	local __cr_src_dir="$HOME/chromium-sources/chromium"
 	if [ ! -f "$TERMUX_PKG_CACHEDIR/.chromium-source-fetched" ]; then
 		mkdir -p "$__cr_src_dir"
 		pushd "$__cr_src_dir"
@@ -60,7 +60,7 @@ termux_step_get_source() {
 	termux_setup_nodejs
 
 	# Fetch electron source without checking out chromium source
-	local __electron_src_dir="$HOME/electron"
+	local __electron_src_dir="$HOME/chromium-sources/electron"
 	if [ ! -f "$TERMUX_PKG_CACHEDIR/.electron-source-fetched" ]; then
 		mkdir -p "$__electron_src_dir"
 		pushd "$__electron_src_dir"
@@ -71,8 +71,8 @@ termux_step_get_source() {
 	fi
 
 	# Layer 1, contains the source code of given version
-	local __layer1_dir="$HOME/electron-layer-1"
-	local __layer1_delete=false
+	local __layer1_dir="$TERMUX_PKG_CACHEDIR/electron-layer-1"
+	local __layer1_delete=true
 	if [ "$__layer1_delete" = true ]; then
 		if __tur_chromium_is_mountpoint "$__layer1_dir/merged" ; then
 			__tur_chromium_sudo umount "$__layer1_dir/merged"
@@ -95,7 +95,7 @@ termux_step_get_source() {
 	fi
 
 	# Layer 2, the real work dir, waiting for patches
-	local __layer2_dir="$HOME/electron-layer-2"
+	local __layer2_dir="$TERMUX_PKG_CACHEDIR/electron-layer-2"
 	if __tur_chromium_is_mountpoint "$__layer2_dir/merged" ; then
 		__tur_chromium_sudo umount "$__layer2_dir/merged"
 	fi
