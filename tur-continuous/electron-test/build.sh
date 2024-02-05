@@ -2,8 +2,8 @@ TERMUX_PKG_HOMEPAGE=https://github.com/electron/electron
 TERMUX_PKG_DESCRIPTION="Build cross-platform desktop apps with JavaScript, HTML, and CSS"
 TERMUX_PKG_LICENSE="MIT, BSD 3-Clause"
 TERMUX_PKG_MAINTAINER="Chongyun Lee <uchkks@protonmail.com>"
-_CHROMIUM_VERSION=114.0.5735.289
-TERMUX_PKG_VERSION=25.9.2
+_CHROMIUM_VERSION=118.0.5993.159
+TERMUX_PKG_VERSION=27.2.3
 TERMUX_PKG_SRCURL=git+https://github.com/electron/electron
 TERMUX_PKG_DEPENDS="electron-deps"
 TERMUX_PKG_BUILD_DEPENDS="libnotify, libffi-static"
@@ -34,14 +34,19 @@ __tur_chromium_sudo() {
 	env -i PATH="$PATH" sudo "$@"
 }
 
-termux_step_get_source() {
-	# Fetch depot_tools
+__tur_setup_depot_tools() {
 	export DEPOT_TOOLS_UPDATE=0
 	if [ ! -f "$TERMUX_PKG_CACHEDIR/.depot_tools-fetched" ];then
 		git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git $TERMUX_PKG_CACHEDIR/depot_tools
 		touch "$TERMUX_PKG_CACHEDIR/.depot_tools-fetched"
 	fi
 	export PATH="$TERMUX_PKG_CACHEDIR/depot_tools:$PATH"
+	export CHROMIUM_BUILDTOOLS_PATH="$TERMUX_PKG_SRCDIR/buildtools"
+}
+
+termux_step_get_source() {
+	# Fetch depot_tools
+	__tur_setup_depot_tools
 
 	# Fetch chromium source
 	local __cr_src_dir="$HOME/chromium-sources/chromium"
@@ -72,7 +77,7 @@ termux_step_get_source() {
 
 	# Layer 1, contains the source code of given version
 	local __layer1_dir="$TERMUX_PKG_CACHEDIR/electron-layer-1"
-	local __layer1_delete=true
+	local __layer1_delete=false
 	if [ "$__layer1_delete" = true ]; then
 		if __tur_chromium_is_mountpoint "$__layer1_dir/merged" ; then
 			__tur_chromium_sudo umount "$__layer1_dir/merged"
@@ -125,9 +130,9 @@ termux_step_post_get_source() {
 
 termux_step_configure() {
 	cd $TERMUX_PKG_SRCDIR
-	termux_setup_gn
 	termux_setup_ninja
 	termux_setup_nodejs
+	__tur_setup_depot_tools
 
 	# Remove termux's dummy pkg-config
 	local _target_pkg_config=$(command -v pkg-config)
@@ -215,6 +220,7 @@ termux_step_configure() {
 
 	echo "
 import(\"//electron/build/args/release.gn\")
+override_electron_version = \"$TERMUX_PKG_VERSION\"
 # Do not build with symbols
 symbol_level = 0
 # Use our custom toolchain
@@ -234,6 +240,7 @@ treat_warnings_as_errors = false
 use_bundled_fontconfig = false
 use_system_freetype = false
 use_system_libdrm = true
+use_system_libffi = true
 use_custom_libcxx = false
 use_allocator_shim = false
 use_partition_alloc_as_malloc = false
@@ -241,7 +248,6 @@ enable_backup_ref_ptr_support = false
 enable_pointer_compression_support = false
 use_nss_certs = true
 use_udev = false
-use_gnome_keyring = false
 use_alsa = false
 use_libpci = false
 use_pulseaudio = true
@@ -253,11 +259,15 @@ ozone_platform_wayland = true
 ozone_platform_headless = true
 angle_enable_vulkan = true
 angle_enable_swiftshader = true
+angle_enable_abseil = false
 rtc_use_pipewire = false
 use_vaapi_x11 = false
 # See comments on Chromium package
 enable_nacl = false
-use_thin_lto=false
+is_cfi = false
+use_cfi_icall = false
+use_thin_lto = false
+enable_rust = false
 " >> $_common_args_file
 
 	if [ "$TERMUX_ARCH" = "arm" ]; then
